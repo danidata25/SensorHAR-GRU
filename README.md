@@ -1,4 +1,4 @@
-# SensorHAR-GRU 🏃‍♂️
+# SensorHAR-GRU
 
 **Human Activity Recognition (HAR)** from wearable sensor data using deep learning (GRU, 1D-CNN) and classical ML (Naive Bayes, XGBoost), with data augmentation, normalization, and self-supervised transfer learning.
 
@@ -144,17 +144,15 @@ model = GRUNet(input_size=3, hidden_size=100, num_layers=2, num_classes=18)
 pip install -r requirements.txt
 ```
 
-> **Note:** Originally developed on Google Colab with Google Drive for data access. Update `data_directory` paths for local use.
-
 ---
 
 ## Project Structure
 
 ```
 SensorHAR-GRU/
-├── gru_activity_recognition.py   # Deep learning models (GRU, LSTM, Conv1D, transfer learning)
-├── ml_models.ipynb               # Classical ML models (Naive Bayes, XGBoost, Random Forest, LR)
-├── requirements.txt              # Python dependencies
+├── gru_activity_recognition.py
+├── ml_models.ipynb
+├── requirements.txt
 ├── .gitignore
 └── README.md
 ```
