@@ -1,6 +1,6 @@
 # SensorHAR-GRU
 
-**Human Activity Recognition (HAR)** from wearable sensor data using deep learning (GRU, 1D-CNN) and classical ML (Naive Bayes, XGBoost), with data augmentation, normalization, and self-supervised transfer learning.
+**Human Activity Recognition (HAR)** from wearable sensor data using deep learning (GRU, 1D-CNN) and classical ML (Naive Bayes, XGBoost), with data augmentation, normalization, and self-supervised transfer learning
 
 > Built as part of a **Practical Deep Learning Workshop** — a Kaggle-style competition to classify 18 human activities from accelerometer time-series data recorded by smartwatch and Vicon sensors.
 
