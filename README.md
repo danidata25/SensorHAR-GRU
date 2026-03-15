@@ -1,13 +1,15 @@
 # SensorHAR-GRU 🏃
 
-A deep learning pipeline for **Human Activity Recognition (HAR)** from sensor time-series data using **GRU**, **LSTM**, and **Conv1D** neural networks, with support for **transfer learning**.
+A **Human Activity Recognition (HAR)** pipeline using both **deep learning** (GRU, LSTM, Conv1D) and **classical ML** models (Naive Bayes, XGBoost, Random Forest, Logistic Regression) on sensor time-series data, with support for **transfer learning**.
 
 ---
 
 ## Overview
 
 This project classifies human activities from multi-axis accelerometer sensor data (X, Y, Z). It includes:
-- Multiple model architectures: GRU, LSTM, Conv1D
+- **Deep learning**: GRU, LSTM, Conv1D architectures
+- **Classical ML**: Naive Bayes, XGBoost, Random Forest, Logistic Regression
+- Feature engineering (mean, std, max, min, median per axis)
 - Transfer learning via a pre-trained Autoencoder (AE)
 - Data augmentation (jitter, scaling, random crop)
 - Sequence normalization and padding
@@ -32,6 +34,16 @@ This project classifies human activities from multi-axis accelerometer sensor da
 
 ### Transfer Learning
 A pre-trained **Autoencoder (AE)** is frozen and used as a feature extractor (`EmbeddedModel`), with only the classification head fine-tuned.
+
+### Classical ML Models (`ml_models.ipynb`)
+Feature-engineered approach using handcrafted statistical features (mean, std, max, min, median per axis):
+
+| Model | Library |
+|---|---|
+| **Naive Bayes** | sklearn GaussianNB (incremental `partial_fit`) |
+| **XGBoost** | xgboost (incremental training) |
+| **Random Forest** | sklearn RandomForestClassifier |
+| **Logistic Regression** | sklearn LogisticRegression |
 
 ---
 
@@ -82,7 +94,8 @@ python gru_activity_recognition.py
 
 ```
 SensorHAR-GRU/
-├── gru_activity_recognition.py   # Main script
+├── gru_activity_recognition.py   # Deep learning models (GRU, LSTM, Conv1D)
+├── ml_models.ipynb               # Classical ML models (NB, XGB, RF, LR)
 ├── requirements.txt              # Dependencies
 ├── .gitignore
 └── README.md
