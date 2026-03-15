@@ -1,69 +1,120 @@
-# SensorHAR-GRU 🏃
+# SensorHAR-GRU 🏃‍♂️
 
-A **Human Activity Recognition (HAR)** pipeline using both **deep learning** (GRU, LSTM, Conv1D) and **classical ML** models (Naive Bayes, XGBoost, Random Forest, Logistic Regression) on sensor time-series data, with support for **transfer learning**.
+**Human Activity Recognition (HAR)** from wearable sensor data using deep learning (GRU, 1D-CNN) and classical ML (Naive Bayes, XGBoost), with data augmentation, normalization, and self-supervised transfer learning.
 
----
-
-## Overview
-
-This project classifies human activities from multi-axis accelerometer sensor data (X, Y, Z). It includes:
-- **Deep learning**: GRU, LSTM, Conv1D architectures
-- **Classical ML**: Naive Bayes, XGBoost, Random Forest, Logistic Regression
-- Feature engineering (mean, std, max, min, median per axis)
-- Transfer learning via a pre-trained Autoencoder (AE)
-- Data augmentation (jitter, scaling, random crop)
-- Sequence normalization and padding
-- Submission pipeline for Kaggle-style competition
+> Built as part of a **Practical Deep Learning Workshop** — a Kaggle-style competition to classify 18 human activities from accelerometer time-series data recorded by smartwatch and Vicon sensors.
 
 ---
 
-## Model Architectures
+## Problem Statement
 
-### GRUNet
-- Multi-layer bidirectional GRU
-- FC head: Linear → ReLU → BatchNorm → Dropout → Sigmoid → Linear
-- Output: class logits
+Given **X, Y, Z acceleration sequences** recorded from sensors on different body parts, classify which of **18 activities** the user was performing (walking, stairs up, washing hands, etc.).
 
-### LSTMNet
-- Multi-layer bidirectional LSTM
-- Same FC head as GRUNet
+The dataset consists of recordings from 8 users captured by two sensor types (**smartwatch** and **Vicon**), with varying sequence lengths, units, and sensor placements. The total dataset contains **124,992 samples**, of which **50,248 are labeled** (40%) and the rest are unlabeled (60%).
 
-### Conv1DNet
-- 3× (Conv1D → MaxPool) blocks
-- AdaptiveAvgPool → Dropout → FC layers
+---
 
-### Transfer Learning
-A pre-trained **Autoencoder (AE)** is frozen and used as a feature extractor (`EmbeddedModel`), with only the classification head fine-tuned.
+## Data Pipeline
 
-### Classical ML Models (`ml_models.ipynb`)
-Feature-engineered approach using handcrafted statistical features (mean, std, max, min, median per axis):
+### Preprocessing
+- **Two sensor types** (Type 1 & Type 2) normalized separately using per-type mean/std standardization
+- Sequences padded to a fixed length of **4,000 timesteps**
+- Null/NaN sequences filtered out
 
-| Model | Library |
+### Augmentation (applied during training)
+| Technique | Details |
 |---|---|
-| **Naive Bayes** | sklearn GaussianNB (incremental `partial_fit`) |
-| **XGBoost** | xgboost (incremental training) |
-| **Random Forest** | sklearn RandomForestClassifier |
-| **Logistic Regression** | sklearn LogisticRegression |
+| **Gaussian jitter** | noise with mean=0, std=0.05 |
+| **Uniform scaling** | additive factor in range [-0.03, 0.1] |
+| **Random cropping** | Random sub-window of the sequence (rest zero-padded) |
+
+Augmentation + normalization proved to be a **game changer** — the model generalized significantly better, with validation accuracy exceeding training accuracy at each epoch.
+
+### Data Split
+| Set | Percentage | Count |
+|-----|-----------|-------|
+| Train | 72% | ~36k |
+| Validation | 8% | ~4k |
+| Test | 20% | ~10k |
 
 ---
 
-## Data
+## Models & Results
 
-- **Type 1 & Type 2** sensor sequences (`.pkl` files)
-- 50,248 total samples across 18 activity classes
-- Sequences padded to fixed length of 4,000 timesteps
-- 70% train / 15% validation / 15% test split
+### Classical ML (`ml_models.ipynb`)
 
-**Data augmentations:**
-| Augmentation | Description |
-|---|---|
-| Jitter | Adds Gaussian noise |
-| Scaling | Random additive scaling factor |
-| Random Crop | Crops a fixed-length window |
+Hand-crafted statistical features extracted from sequences (mean, std, max, min, median per axis), with experiments on different feature engineering approaches:
+
+1. **Subsampled** sequences → 6 features (mean + std per axis)
+2. **Segment-based** features → (num_segments × 6)
+3. **Moving-average smoothed** sequences → 6 features
+4. Smoothed + segmented
+
+| Model | Approach | Train Acc | Test Acc | Notes |
+|---|---|---|---|---|
+| **Naive Bayes** | Smoothed (3) | 0.382 | 0.378 | Most stable |
+| **XGBoost** | Smoothed (3) | 0.765 | **0.575** | Best ML result |
+
+**Key insights:**
+- XGBoost overfits heavily on raw features; smoothing helps
+- Naive Bayes is more stable but less powerful
+- ML baseline: **~0.48 accuracy** → target to beat with deep learning
+
+### 1D-CNN (`gru_activity_recognition.py`)
+3 convolutional blocks (64→128→256 filters) + adaptive pooling + FC classifier.
+
+| Set | Accuracy | Loss |
+|-----|----------|------|
+| Train | 0.980 | 0.115 |
+| Val | 0.776 | 0.978 |
+| **Test** | **0.761** | 0.986 |
+
+Signs of overfitting — large gap between train/val accuracy.
+
+### GRU Network (`gru_activity_recognition.py`)
+2-layer GRU (hidden_size=100) + FC head with BatchNorm, Dropout, and Sigmoid.
+
+| Set | Accuracy | Loss |
+|-----|----------|------|
+| Train | 0.770 | 0.571 |
+| Val | 0.772 | 0.615 |
+| **Test** | **0.771** | 0.588 |
+
+Better generalization than 1D-CNN — train/val gap is minimal.
+
+### GRU + Augmentation & Normalization (final model)
+
+After applying normalization + augmentation, the model generalizes better (val > train at each epoch) but learns slower:
+
+| Set | Accuracy | Loss |
+|-----|----------|------|
+| Train | 0.678 | 0.800 |
+| Val | 0.706 | 0.718 |
+| **Test** | **0.727** | 0.674 |
+
+### Kaggle Competition Results
+
+| Model | Loss on dataset | Kaggle Score |
+|-------|----------------|--------------|
+| GRU (no aug/norm) | ~0.458 | 2.272 |
+| **GRU + aug + norm** | 0.799 | **1.778** |
+
+**The augmented model scored 28% better on the competition leaderboard** despite higher training loss — demonstrating the value of generalization.
+
+### Self-Supervised: LSTM Autoencoder (transfer learning)
+
+Trained an LSTM Autoencoder on the full **unlabeled dataset** (60%), then used the 128-dim encoder embeddings as input to a classifier.
+
+| Set | Accuracy | Loss |
+|-----|----------|------|
+| Train | 0.098 | 2.720 |
+| Val | 0.102 | 2.720 |
+
+Results were poor — likely needs larger embedding size and more complex downstream architecture. Implemented after the competition ended as a proof-of-concept.
 
 ---
 
-## Training
+## Training Configuration
 
 ```python
 model = GRUNet(input_size=3, hidden_size=100, num_layers=2, num_classes=18)
@@ -75,7 +126,15 @@ model = GRUNet(input_size=3, hidden_size=100, num_layers=2, num_classes=18)
 | Scheduler | StepLR (step=50, γ=0.99) |
 | Loss | CrossEntropyLoss |
 | Batch Size | 128 |
-| Epochs | 10 |
+
+---
+
+## Future Work
+
+1. **Ensemble learning** — combine predictions from GRU, 1D-CNN, and ML models via a meta-learner or feature concatenation from penultimate layers
+2. **Self-supervised pretraining** — improve the LSTM Autoencoder with larger embedding dimension and more complex classifier
+3. **Additional features** — skewness, kurtosis, frequency-domain features (FFT)
+4. **K-fold cross-validation** — better generalization estimates (not feasible during competition due to compute constraints)
 
 ---
 
@@ -83,10 +142,9 @@ model = GRUNet(input_size=3, hidden_size=100, num_layers=2, num_classes=18)
 
 ```bash
 pip install -r requirements.txt
-python gru_activity_recognition.py
 ```
 
-> **Note:** This project was originally developed on Google Colab with Google Drive for data access. Update data paths accordingly for local use.
+> **Note:** Originally developed on Google Colab with Google Drive for data access. Update `data_directory` paths for local use.
 
 ---
 
@@ -94,15 +152,9 @@ python gru_activity_recognition.py
 
 ```
 SensorHAR-GRU/
-├── gru_activity_recognition.py   # Deep learning models (GRU, LSTM, Conv1D)
-├── ml_models.ipynb               # Classical ML models (NB, XGB, RF, LR)
-├── requirements.txt              # Dependencies
+├── gru_activity_recognition.py   # Deep learning models (GRU, LSTM, Conv1D, transfer learning)
+├── ml_models.ipynb               # Classical ML models (Naive Bayes, XGBoost, Random Forest, LR)
+├── requirements.txt              # Python dependencies
 ├── .gitignore
 └── README.md
 ```
-
----
-
-## Results
-
-Outputs a classification report and submission CSV with per-class softmax probabilities.
